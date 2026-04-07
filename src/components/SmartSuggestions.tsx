@@ -1,75 +1,116 @@
-import { Droplets, Scissors, Sun, Wind, MoveRight, Sprout } from "lucide-react";
+import { useState, useEffect } from "react";
+import { Loader2, Leaf, MoveRight } from "lucide-react";
+import { useGardenAdvice } from "@/hooks/useGardenAdvice";
+import { WeatherData } from "@/hooks/useWeather";
 
-const suggestions = [
-  {
-    icon: Droplets,
-    emoji: "💧",
-    title: "Water today",
-    description: "Temperature is above 22°C and no rain expected.",
-    urgency: "high" as const,
-  },
-  {
-    icon: Scissors,
-    emoji: "✂️",
-    title: "Trim leaves",
-    description: "Some yellowing detected on lower leaves of your Peace Lily.",
-    urgency: "medium" as const,
-  },
-  {
-    icon: Sun,
-    emoji: "☀️",
-    title: "Move to sunlight",
-    description: "Your Succulent needs more direct light for optimal growth.",
-    urgency: "high" as const,
-  },
-  {
-    icon: Wind,
-    emoji: "🌬️",
-    title: "Improve ventilation",
-    description: "Humidity is high — open windows to prevent mold.",
-    urgency: "low" as const,
-  },
-  {
-    icon: Sprout,
-    emoji: "🌱",
-    title: "Fertilize this week",
-    description: "It's growing season — add nutrients to promote healthy growth.",
-    urgency: "medium" as const,
-  },
+const PLANT_TYPES = [
+  "Monstera",
+  "Snake Plant",
+  "Peace Lily",
+  "Succulent",
+  "Lavender",
+  "Tulsi",
+  "Money Plant",
+  "Basil",
+  "Rose",
+  "Tomato",
 ];
 
-const urgencyColors = {
-  high: "border-l-health-bad bg-health-bad/5",
-  medium: "border-l-health-warning bg-health-warning/5",
-  low: "border-l-primary bg-primary/5",
-};
+interface SmartSuggestionsProps {
+  weather: WeatherData | null;
+}
 
-const SmartSuggestions = () => {
+const SmartSuggestions = ({ weather }: SmartSuggestionsProps) => {
+  const [selectedPlant, setSelectedPlant] = useState("Monstera");
+  const { advice, loading, error, fetchAdvice } = useGardenAdvice();
+
+  useEffect(() => {
+    if (weather) {
+      fetchAdvice(
+        weather.temperature,
+        weather.humidity,
+        weather.rainfall,
+        weather.rainProbability,
+        selectedPlant
+      );
+    }
+  }, [weather, selectedPlant, fetchAdvice]);
+
+  const getAdviceEmoji = (text: string) => {
+    if (text.includes("water") || text.includes("Water") || text.includes("💧")) return "💧";
+    if (text.includes("rain") || text.includes("🌧")) return "🌧️";
+    if (text.includes("sun") || text.includes("☀")) return "☀️";
+    if (text.includes("frost") || text.includes("❄") || text.includes("cold") || text.includes("Cool")) return "❄️";
+    if (text.includes("humid") || text.includes("💨")) return "💨";
+    if (text.includes("fungal") || text.includes("rot")) return "⚠️";
+    if (text.includes("shade")) return "🏠";
+    if (text.includes("drain")) return "🪴";
+    return "🌱";
+  };
+
   return (
     <section id="suggestions" className="py-16 px-4 max-w-7xl mx-auto">
       <div className="text-center mb-10">
         <h2 className="font-heading text-3xl font-bold text-foreground mb-2">
-          🧠 Smart Suggestions
+          🧠 Smart Garden Advice
         </h2>
         <p className="text-muted-foreground max-w-lg mx-auto">
-          Actionable care tips combining weather, plant data, and AI insights.
+          Real-time care suggestions based on your weather and plant selection.
         </p>
       </div>
 
+      {/* Plant selector */}
+      <div className="max-w-2xl mx-auto mb-6">
+        <label className="block text-sm font-medium text-foreground mb-2">Select your plant:</label>
+        <div className="flex flex-wrap gap-2">
+          {PLANT_TYPES.map((plant) => (
+            <button
+              key={plant}
+              onClick={() => setSelectedPlant(plant)}
+              className={`px-4 py-2 rounded-xl text-sm font-medium transition-all duration-200 ${
+                selectedPlant === plant
+                  ? "nature-gradient text-primary-foreground shadow-md"
+                  : "bg-secondary text-secondary-foreground hover:bg-secondary/80"
+              }`}
+            >
+              {plant}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* Advice cards */}
       <div className="max-w-2xl mx-auto space-y-3">
-        {suggestions.map((s, i) => (
+        {loading && (
+          <div className="glass-card p-8 text-center">
+            <Loader2 size={24} className="animate-spin text-primary mx-auto mb-2" />
+            <p className="text-sm text-muted-foreground">Getting advice...</p>
+          </div>
+        )}
+
+        {error && (
+          <div className="glass-card p-4 border-l-4 border-l-destructive">
+            <p className="text-sm text-destructive">{error}</p>
+          </div>
+        )}
+
+        {!loading && !weather && (
+          <div className="glass-card p-8 text-center">
+            <Leaf size={32} className="text-muted-foreground mx-auto mb-2" />
+            <p className="text-sm text-muted-foreground">Waiting for weather data to generate advice...</p>
+          </div>
+        )}
+
+        {!loading && advice?.advice.map((text, i) => (
           <div
             key={i}
-            className={`glass-card border-l-4 ${urgencyColors[s.urgency]} p-4 flex items-center gap-4 animate-fade-up hover:scale-[1.01] transition-transform duration-200`}
-            style={{ animationDelay: `${i * 0.08}s` }}
+            className="glass-card border-l-4 border-l-primary p-4 flex items-center gap-4 animate-fade-up hover:scale-[1.01] transition-transform duration-200"
+            style={{ animationDelay: `${i * 0.06}s` }}
           >
             <div className="w-10 h-10 rounded-xl bg-secondary flex items-center justify-center shrink-0">
-              <span className="text-lg">{s.emoji}</span>
+              <span className="text-lg">{getAdviceEmoji(text)}</span>
             </div>
-            <div className="flex-1 min-w-0">
-              <h4 className="font-heading font-semibold text-foreground text-sm">{s.title}</h4>
-              <p className="text-xs text-muted-foreground">{s.description}</p>
-            </div>
+            <p className="flex-1 text-sm text-foreground">{text}</p>
             <MoveRight size={16} className="text-muted-foreground shrink-0" />
           </div>
         ))}

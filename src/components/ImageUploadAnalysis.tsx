@@ -1,71 +1,22 @@
 import { useState, useRef } from "react";
-import { Upload, Camera, Loader2, CheckCircle, AlertTriangle, XCircle, Leaf } from "lucide-react";
-
-interface AnalysisResult {
-  status: "healthy" | "warning" | "unhealthy";
-  confidence: number;
-  suggestions: string[];
-  plantName: string;
-}
-
-const mockAnalyze = (): Promise<AnalysisResult> => {
-  return new Promise((resolve) => {
-    setTimeout(() => {
-      const results: AnalysisResult[] = [
-        {
-          status: "healthy",
-          confidence: 92,
-          plantName: "Monstera Deliciosa",
-          suggestions: [
-            "Your plant looks great! Continue current care routine.",
-            "Consider rotating the pot weekly for even growth.",
-            "Mist leaves occasionally for added humidity.",
-          ],
-        },
-        {
-          status: "warning",
-          confidence: 78,
-          plantName: "Peace Lily",
-          suggestions: [
-            "Slight yellowing on lower leaves detected.",
-            "Reduce watering frequency — soil may be too moist.",
-            "Move to a spot with more indirect light.",
-          ],
-        },
-        {
-          status: "unhealthy",
-          confidence: 85,
-          plantName: "Fiddle Leaf Fig",
-          suggestions: [
-            "Brown spots detected — possible overwatering.",
-            "Check for root rot and repot if needed.",
-            "Ensure proper drainage in the pot.",
-            "Trim affected leaves to prevent spread.",
-          ],
-        },
-      ];
-      resolve(results[Math.floor(Math.random() * results.length)]);
-    }, 2000);
-  });
-};
+import { Upload, Loader2, CheckCircle, AlertTriangle, XCircle, Leaf } from "lucide-react";
+import { usePlantAnalysis, PlantAnalysis } from "@/hooks/usePlantAnalysis";
 
 const statusConfig = {
-  healthy: { icon: CheckCircle, label: "Healthy", colorClass: "text-health-good", bgClass: "bg-health-good/10" },
-  warning: { icon: AlertTriangle, label: "Needs Attention", colorClass: "text-health-warning", bgClass: "bg-health-warning/10" },
-  unhealthy: { icon: XCircle, label: "Unhealthy", colorClass: "text-health-bad", bgClass: "bg-health-bad/10" },
+  Healthy: { icon: CheckCircle, label: "Healthy", colorClass: "text-health-good", bgClass: "bg-health-good/10" },
+  "Needs Attention": { icon: AlertTriangle, label: "Needs Attention", colorClass: "text-health-warning", bgClass: "bg-health-warning/10" },
+  Unhealthy: { icon: XCircle, label: "Unhealthy", colorClass: "text-health-bad", bgClass: "bg-health-bad/10" },
 };
 
 const ImageUploadAnalysis = () => {
   const [image, setImage] = useState<string | null>(null);
-  const [analyzing, setAnalyzing] = useState(false);
-  const [result, setResult] = useState<AnalysisResult | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
+  const { analysis, loading, error, analyze } = usePlantAnalysis();
 
   const handleFile = (file: File) => {
     const reader = new FileReader();
     reader.onload = (e) => {
       setImage(e.target?.result as string);
-      setResult(null);
     };
     reader.readAsDataURL(file);
   };
@@ -76,19 +27,16 @@ const ImageUploadAnalysis = () => {
     if (file?.type.startsWith("image/")) handleFile(file);
   };
 
-  const analyze = async () => {
-    setAnalyzing(true);
-    const res = await mockAnalyze();
-    setResult(res);
-    setAnalyzing(false);
+  const handleAnalyze = () => {
+    if (image) analyze(image);
   };
 
   const reset = () => {
     setImage(null);
-    setResult(null);
   };
 
-  const StatusIcon = result ? statusConfig[result.status].icon : null;
+  const config = analysis ? statusConfig[analysis.health] || statusConfig["Needs Attention"] : null;
+  const StatusIcon = config?.icon;
 
   return (
     <section id="ai-analysis" className="py-16 px-4 max-w-7xl mx-auto">
@@ -97,12 +45,11 @@ const ImageUploadAnalysis = () => {
           🔍 AI Plant Health Analysis
         </h2>
         <p className="text-muted-foreground max-w-lg mx-auto">
-          Upload a photo of your plant and get instant health insights.
+          Upload a photo for real AI-powered health diagnosis using Lovable AI.
         </p>
       </div>
 
       <div className="max-w-2xl mx-auto grid gap-6">
-        {/* Upload area */}
         <div
           onDrop={handleDrop}
           onDragOver={(e) => e.preventDefault()}
@@ -126,14 +73,14 @@ const ImageUploadAnalysis = () => {
               </div>
               <div className="flex gap-3">
                 <button
-                  onClick={analyze}
-                  disabled={analyzing}
+                  onClick={handleAnalyze}
+                  disabled={loading}
                   className="flex-1 inline-flex items-center justify-center gap-2 px-5 py-3 rounded-2xl nature-gradient text-primary-foreground font-semibold text-sm shadow-lg hover:shadow-xl transition-all duration-300 disabled:opacity-60"
                 >
-                  {analyzing ? (
+                  {loading ? (
                     <>
                       <Loader2 size={18} className="animate-spin" />
-                      Analyzing...
+                      Analyzing with AI...
                     </>
                   ) : (
                     <>
@@ -161,23 +108,42 @@ const ImageUploadAnalysis = () => {
           />
         </div>
 
-        {/* Result card */}
-        {result && StatusIcon && (
+        {error && (
+          <div className="glass-card p-4 border-l-4 border-l-destructive animate-scale-in">
+            <p className="text-sm text-destructive">{error}</p>
+          </div>
+        )}
+
+        {analysis && config && StatusIcon && (
           <div className="glass-card p-6 animate-scale-in">
             <div className="flex items-center gap-3 mb-4">
-              <div className={`w-10 h-10 rounded-xl ${statusConfig[result.status].bgClass} flex items-center justify-center`}>
-                <StatusIcon size={20} className={statusConfig[result.status].colorClass} />
+              <div className={`w-10 h-10 rounded-xl ${config.bgClass} flex items-center justify-center`}>
+                <StatusIcon size={20} className={config.colorClass} />
               </div>
               <div>
-                <h4 className="font-heading font-semibold text-foreground">{result.plantName}</h4>
-                <p className={`text-sm font-medium ${statusConfig[result.status].colorClass}`}>
-                  {statusConfig[result.status].label} • {result.confidence}% confidence
+                <h4 className="font-heading font-semibold text-foreground">{analysis.plantName}</h4>
+                <p className={`text-sm font-medium ${config.colorClass}`}>
+                  {config.label} • {analysis.confidence}% confidence
                 </p>
               </div>
             </div>
 
+            {analysis.issue !== "None" && (
+              <div className="bg-health-warning/10 rounded-xl p-3 mb-4">
+                <p className="text-sm font-medium text-foreground">⚠️ Issue: {analysis.issue}</p>
+                <p className="text-sm text-muted-foreground">{analysis.action}</p>
+              </div>
+            )}
+
+            {analysis.issue === "None" && (
+              <div className="bg-health-good/10 rounded-xl p-3 mb-4">
+                <p className="text-sm font-medium text-foreground">✅ No issues detected</p>
+                <p className="text-sm text-muted-foreground">{analysis.action}</p>
+              </div>
+            )}
+
             <div className="space-y-2">
-              {result.suggestions.map((s, i) => (
+              {analysis.details.map((s, i) => (
                 <div key={i} className="flex items-start gap-2 bg-secondary/50 rounded-xl p-3">
                   <span className="text-primary mt-0.5">•</span>
                   <p className="text-sm text-foreground">{s}</p>
