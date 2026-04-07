@@ -1,40 +1,27 @@
 import Navbar from "@/components/Navbar";
 import HeroSection from "@/components/HeroSection";
+import LocationBar from "@/components/LocationBar";
 import WeatherCard from "@/components/WeatherCard";
 import PlantRecommendations from "@/components/PlantRecommendations";
 import ImageUploadAnalysis from "@/components/ImageUploadAnalysis";
 import SmartSuggestions from "@/components/SmartSuggestions";
 import Footer from "@/components/Footer";
-import { Calendar, MapPin, Bell } from "lucide-react";
-
-const QuickStats = () => (
-  <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 max-w-3xl mx-auto -mt-8 relative z-20 px-4">
-    {[
-      { icon: MapPin, label: "Location", value: "San Francisco", color: "text-primary" },
-      { icon: Calendar, label: "Season", value: "Spring", color: "text-leaf" },
-      { icon: Bell, label: "Reminders", value: "3 Active", color: "text-sun" },
-    ].map((stat) => (
-      <div key={stat.label} className="glass-card p-4 flex items-center gap-3">
-        <div className="w-10 h-10 rounded-xl bg-secondary flex items-center justify-center shrink-0">
-          <stat.icon size={18} className={stat.color} />
-        </div>
-        <div>
-          <p className="text-xs text-muted-foreground">{stat.label}</p>
-          <p className="font-heading font-semibold text-sm text-foreground">{stat.value}</p>
-        </div>
-      </div>
-    ))}
-  </div>
-);
+import { useGeolocation } from "@/hooks/useGeolocation";
+import { useWeather } from "@/hooks/useWeather";
 
 const Index = () => {
+  const { location, loading: geoLoading, error: geoError, permissionDenied, detectLocation, searchCity } = useGeolocation();
+  const { weather, loading: weatherLoading, error: weatherError } = useWeather(
+    location?.lat ?? null,
+    location?.lon ?? null
+  );
+
   return (
     <div className="min-h-screen bg-background">
       <Navbar />
 
       <main className="pt-16">
         <HeroSection />
-        <QuickStats />
 
         <section id="dashboard" className="py-16 px-4 max-w-7xl mx-auto">
           <div className="text-center mb-10">
@@ -42,18 +29,26 @@ const Index = () => {
               🌤️ Today's Dashboard
             </h2>
             <p className="text-muted-foreground">
-              Your garden at a glance — weather, tips, and care reminders.
+              Live weather data and personalized garden care — powered by your location.
             </p>
           </div>
 
-          <div className="max-w-md mx-auto">
-            <WeatherCard />
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-3xl mx-auto">
+            <LocationBar
+              locationName={location ? `${location.name}${location.country ? `, ${location.country}` : ""}` : null}
+              loading={geoLoading}
+              permissionDenied={permissionDenied}
+              error={geoError}
+              onSearch={searchCity}
+              onDetect={detectLocation}
+            />
+            <WeatherCard weather={weather} loading={weatherLoading} error={weatherError} />
           </div>
         </section>
 
         <PlantRecommendations />
         <ImageUploadAnalysis />
-        <SmartSuggestions />
+        <SmartSuggestions weather={weather} />
       </main>
 
       <Footer />
