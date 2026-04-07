@@ -1,4 +1,4 @@
-# 🌿 Virtual Gardener AI
+# 🌳 Virtual Gardener AI
 
 An intelligent web application that helps users take better care of their plants using **real-time weather data**, **rule-based logic**, and **AI-powered plant analysis**.
 
