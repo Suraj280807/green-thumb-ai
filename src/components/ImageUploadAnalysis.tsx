@@ -45,7 +45,7 @@ const ImageUploadAnalysis = () => {
           🔍 AI Plant Health Analysis
         </h2>
         <p className="text-muted-foreground max-w-lg mx-auto">
-          Upload a photo for real AI-powered health diagnosis using Lovable AI.
+          Upload a photo for real AI-powered health diagnosis using AI.
         </p>
       </div>
 
